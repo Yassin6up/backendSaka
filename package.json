@@ -1,0 +1,29 @@
+{
+  "name": "clean-backend-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Refactored Express backend with routes/controllers/middlewares structure",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "expo-server-sdk": "^4.0.0",
+    "express": "^4.19.2",
+    "moment": "^2.30.1",
+    "multer": "^2.0.2",
+    "mysql": "^2.18.1",
+    "node-cron": "^3.0.3",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
