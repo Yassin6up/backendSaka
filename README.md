@@ -123,6 +123,8 @@ A clean, well-structured Node.js backend server for the JBuy application built w
 - `POST /api/auth/reset-password` - Password reset
 - `GET /api/auth/profile/:userId` - Get user profile
 - `POST /api/auth/user/update-user` - Update user profile
+- `POST /api/auth/update-picture/user` - Update profile picture
+- `GET /api/auth/user/profile-picture/:imageName` - Get profile picture
 
 ### Places
 - `GET /api/places` - Get all places
@@ -132,24 +134,115 @@ A clean, well-structured Node.js backend server for the JBuy application built w
 - `DELETE /api/places/:id` - Delete place
 - `GET /api/places/search` - Search places
 - `GET /api/places/category-counts` - Get category counts
+- `GET /api/places/by-owner/:ownerId` - Get places by owner
+- `POST /api/places/:id/toggle-active` - Toggle place active status
+- `GET /api/places/similar-products` - Get similar places
+- `POST /api/places/filter/spesific` - Filter places with specific criteria
 
 ### Notifications
 - `POST /api/notifications/send-notification` - Send notification
 - `GET /api/notifications/api/notifications/:userId` - Get user notifications
 - `POST /api/notifications/api/notifications/read/:id` - Mark as read
 - `DELETE /api/notifications/api/notifications/:id` - Delete notification
+- `GET /api/notifications/api/notifications/unread/:userId` - Get unread count
+- `POST /api/notifications/toggle_blocked/:id` - Toggle user blocked status
+- `POST /api/notifications/toggle_trustable/:id` - Toggle user trustable status
 
 ### Bookings
 - `POST /api/bookings/api/bookings/add` - Create booking
 - `GET /api/bookings/get-all-bookings` - Get all bookings
 - `POST /api/bookings/get-bookings-by-user` - Get user bookings
 - `POST /api/bookings/update-booking-status` - Update booking status
+- `GET /api/bookings/api/bookings/get/:id` - Get booking by ID
+- `GET /api/bookings/bookings/getTitles/:place_id` - Get booking titles for place
+- `DELETE /api/bookings/bookings/:id` - Delete booking
 
 ### Categories
 - `GET /api/categories/all` - Get all categories
 - `GET /api/categories/slug` - Get categories with slugs
+- `GET /api/categories/admin/all` - Get all categories (admin)
 - `POST /api/categories/admin/create` - Create category (admin)
 - `PUT /api/categories/admin/:id` - Update category (admin)
+- `DELETE /api/categories/admin/:id` - Delete category (admin)
+- `PUT /api/categories/toggle/:slug` - Toggle category active status
+
+### Reviews & Ratings
+- `POST /api/reviews/reviews/add` - Add review
+- `GET /api/reviews/reviews/:place_id` - Get place reviews
+- `GET /api/reviews/user/:userId/reviews` - Get user reviews
+- `PUT /api/reviews/reviews/:reviewId` - Update review
+- `DELETE /api/reviews/comments/:reviewId` - Delete review
+
+### Likes & Follows
+- `POST /api/likes/like` - Toggle like for place
+- `GET /api/likes/api/user/:userId/likes` - Get user's liked places
+- `GET /api/likes/places/:placeId/likes` - Get place like count
+- `GET /api/likes/user/:userId/place/:placeId/liked` - Check if user liked place
+- `POST /api/follows/follow/user` - Toggle follow relationship
+- `GET /api/follows/user/:userId/followers` - Get user's followers
+- `GET /api/follows/user/:userId/following` - Get user's following
+- `GET /api/follows/user/:userId/follow-counts` - Get follow counts
+
+### Reports
+- `POST /api/reports/api/report` - Create report
+- `GET /api/reports/api/reports` - Get all reports (admin)
+- `GET /api/reports/api/reports/:reportId` - Get report by ID (admin)
+- `PUT /api/reports/reports/:reportId/status` - Update report status (admin)
+- `GET /api/reports/user/:userId/reports` - Get user's reports
+- `DELETE /api/reports/reports/:reportId` - Delete report (admin)
+
+### Services
+- `GET /api/services/api/services` - Get all services
+- `GET /api/services/api/getOnce/services/:id` - Get service by ID
+- `GET /api/services/services/car` - Get car services
+- `POST /api/services/api/services` - Create service (admin)
+- `PUT /api/services/api/services/:id` - Update service (admin)
+- `DELETE /api/services/api/services/:id` - Delete service (admin)
+- `PUT /api/services/api/services/:id/toggle` - Toggle service active status (admin)
+
+### Admin
+- `POST /api/admin/api/admin/login` - Admin login
+- `GET /api/admin/api/admin/getData` - Get admin dashboard data
+- `GET /api/admin/admin/counts` - Get admin counts
+- `GET /api/admin/admins` - Get all admins
+- `POST /api/admin/admins` - Create admin
+- `DELETE /api/admin/admins/:id` - Delete admin
+- `POST /api/admin/admin/update-password` - Update admin password
+- `GET /api/admin/admin/users` - Get all users (admin)
+- `PUT /api/admin/api/users/update` - Update user (admin)
+- `POST /api/admin/admin/delete/users/:id` - Delete user (admin)
+
+### Settings
+- `GET /api/settings/get-settings` - Get settings
+- `GET /api/settings/privacy` - Get privacy policy
+- `GET /api/settings/terms` - Get terms of service
+- `POST /api/settings/update-settings` - Update settings (admin)
+- `GET /api/settings/get-settings-admin` - Get settings for admin
+
+### Slides
+- `GET /api/slides/api/slides` - Get all slides
+- `GET /api/slides/api/slides/single/:fileName` - Get single slide
+- `GET /api/slides/api/icons/single/:fileName` - Get single icon
+- `POST /api/slides/api/slides` - Create slide (admin)
+- `DELETE /api/slides/api/slides/:fileName` - Delete slide (admin)
+
+### Subscriptions
+- `GET /api/subscriptions/api/subscriptions` - Get all subscriptions
+- `POST /api/subscriptions/api/subscriptions` - Create subscription (admin)
+- `PUT /api/subscriptions/api/subscriptions/:id` - Update subscription (admin)
+- `DELETE /api/subscriptions/api/subscriptions/:id` - Delete subscription (admin)
+
+### Utility Routes
+- `GET /api/images/:folderName/:imageName` - Get image file
+- `GET /checkUser/:id/limitPosts` - Check user post limit
+- `GET /images/user/:id` - Get user images
+- `POST /check-phone` - Check if phone number exists
+- `POST /reset-password-forget` - Reset password for forgotten password
+- `POST /user/phone-verification` - Verify user phone
+- `POST /user/update-phone` - Update user phone
+- `GET /places/filter/city` - Filter places by city
+- `GET /places/buyOrRent/count` - Get buy/rent counts
+- `GET /places/visits` - Get places visits statistics
 
 ## 🔧 Configuration
 

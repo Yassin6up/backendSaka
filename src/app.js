@@ -10,12 +10,24 @@ const moment = require('moment');
 // Import middleware
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
+// Import database
+const db = require('./config/database');
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const placesRoutes = require('./routes/places');
 const notificationsRoutes = require('./routes/notifications');
 const bookingsRoutes = require('./routes/bookings');
 const categoriesRoutes = require('./routes/categories');
+const reviewsRoutes = require('./routes/reviews');
+const likesRoutes = require('./routes/likes');
+const followsRoutes = require('./routes/follows');
+const reportsRoutes = require('./routes/reports');
+const servicesRoutes = require('./routes/services');
+const adminRoutes = require('./routes/admin');
+const settingsRoutes = require('./routes/settings');
+const slidesRoutes = require('./routes/slides');
+const subscriptionsRoutes = require('./routes/subscriptions');
 
 // Create Express app
 const app = express();
@@ -55,6 +67,15 @@ app.use('/api/places', placesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/categories', categoriesRoutes);
+app.use('/api/reviews', reviewsRoutes);
+app.use('/api/likes', likesRoutes);
+app.use('/api/follows', followsRoutes);
+app.use('/api/reports', reportsRoutes);
+app.use('/api/services', servicesRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/slides', slidesRoutes);
+app.use('/api/subscriptions', subscriptionsRoutes);
 
 // Additional routes that were in the original index.js
 app.get('/test/sms', async (req, res) => {
@@ -65,6 +86,308 @@ app.get('/test/sms', async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// Additional utility routes
+app.get('/api/images/:folderName/:imageName', (req, res) => {
+  const { folderName, imageName } = req.params;
+  const filePath = path.join(__dirname, '../uploads', folderName, imageName);
+  
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).json({
+      success: false,
+      message: 'Image not found'
+    });
+  }
+});
+
+// Check user post limit
+app.get('/checkUser/:id/limitPosts', (req, res) => {
+  const userId = req.params.id;
+  const query = 'SELECT limitPosts FROM users WHERE id = ?';
+  
+  db.query(query, [userId], (error, results) => {
+    if (error) {
+      console.error('Error checking user limit:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      limitPosts: results[0].limitPosts || 0
+    });
+  });
+});
+
+// Get user images
+app.get('/images/user/:id', (req, res) => {
+  const userId = req.params.id;
+  const query = 'SELECT images FROM places WHERE owner_id = ?';
+  
+  db.query(query, [userId], (error, results) => {
+    if (error) {
+      console.error('Error fetching user images:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    const images = results.map(place => {
+      try {
+        return JSON.parse(place.images || '[]');
+      } catch (e) {
+        return [];
+      }
+    }).flat();
+
+    res.json({
+      success: true,
+      images
+    });
+  });
+});
+
+// Check phone number
+app.post('/check-phone', async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    const normalizedPhone = phoneNumber.replace(/^\+9620/, "+962");
+    const query = 'SELECT id FROM users WHERE phone = ?';
+    
+    db.query(query, [normalizedPhone], (error, results) => {
+      if (error) {
+        console.error('Error checking phone:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Database error'
+        });
+      }
+
+      res.json({
+        success: true,
+        exists: results.length > 0
+      });
+    });
+  } catch (error) {
+    console.error('Check phone error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Reset password for forget
+app.post('/reset-password-forget', (req, res) => {
+  const { phoneNumber, newPassword } = req.body;
+  const normalizedPhone = phoneNumber.replace(/^\+9620/, "+962");
+  
+  if (!phoneNumber || !newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: 'Phone number and new password are required'
+    });
+  }
+
+  const crypto = require('crypto');
+  const hashedPassword = crypto.createHash('sha256').update(newPassword).digest('hex');
+  
+  const query = 'UPDATE users SET password = ? WHERE phone = ?';
+  
+  db.query(query, [hashedPassword, normalizedPhone], (error, result) => {
+    if (error) {
+      console.error('Error updating password:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Password updated successfully'
+    });
+  });
+});
+
+// User phone verification
+app.post('/user/phone-verification', (req, res) => {
+  const { id, phone } = req.body;
+  
+  if (!id || !phone) {
+    return res.status(400).json({
+      success: false,
+      message: 'User ID and phone are required'
+    });
+  }
+
+  const query = 'UPDATE users SET phone = ?, is_verified = 1 WHERE id = ?';
+  
+  db.query(query, [phone, id], (error, result) => {
+    if (error) {
+      console.error('Error updating phone:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Phone updated and verified successfully'
+    });
+  });
+});
+
+// Update user phone
+app.post('/user/update-phone', (req, res) => {
+  const userId = req.body.id;
+  const newPhone = req.body.phone;
+  
+  if (!userId || !newPhone) {
+    return res.status(400).json({
+      success: false,
+      message: 'User ID and phone are required'
+    });
+  }
+
+  const query = 'UPDATE users SET phone = ? WHERE id = ?';
+  
+  db.query(query, [newPhone, userId], (error, result) => {
+    if (error) {
+      console.error('Error updating phone:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Phone updated successfully'
+    });
+  });
+});
+
+// Filter places by city
+app.get('/places/filter/city', async (req, res) => {
+  try {
+    const { longitude, latitude, name } = req.query;
+    
+    let query = 'SELECT * FROM places WHERE is_active = 1 AND is_approved = 1';
+    const params = [];
+    
+    if (name) {
+      query += ' AND city LIKE ?';
+      params.push(`%${name}%`);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    db.query(query, params, (error, results) => {
+      if (error) {
+        console.error('Error filtering places by city:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Database error'
+        });
+      }
+
+      res.json({
+        success: true,
+        places: results
+      });
+    });
+  } catch (error) {
+    console.error('Filter places by city error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Get buy or rent count
+app.get('/places/buyOrRent/count', (req, res) => {
+  const query = `
+    SELECT 
+      SUM(CASE WHEN type = 'buy' THEN 1 ELSE 0 END) as buy_count,
+      SUM(CASE WHEN type = 'rent' THEN 1 ELSE 0 END) as rent_count
+    FROM places 
+    WHERE is_active = 1 AND is_approved = 1
+  `;
+  
+  db.query(query, (error, results) => {
+    if (error) {
+      console.error('Error getting buy/rent count:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    res.json({
+      success: true,
+      counts: results[0]
+    });
+  });
+});
+
+// Get places visits
+app.get('/places/visits', (req, res) => {
+  const query = `
+    SELECT 
+      DATE(created_at) as date,
+      COUNT(*) as visits
+    FROM places 
+    WHERE is_active = 1 AND is_approved = 1
+    GROUP BY DATE(created_at)
+    ORDER BY date DESC
+    LIMIT 30
+  `;
+  
+  db.query(query, (error, results) => {
+    if (error) {
+      console.error('Error getting places visits:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    res.json({
+      success: true,
+      visits: results
+    });
+  });
 });
 
 // Admin routes
