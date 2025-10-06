@@ -232,6 +232,47 @@ A clean, well-structured Node.js backend server for the JBuy application built w
 - `PUT /api/subscriptions/api/subscriptions/:id` - Update subscription (admin)
 - `DELETE /api/subscriptions/api/subscriptions/:id` - Delete subscription (admin)
 
+### Property Requests
+- `POST /api/requests/requests` - Create property request
+- `GET /api/requests/api/requests` - Get all property requests
+- `POST /api/requests/user/matching-requests` - Get matching requests for user
+- `GET /api/requests/api/requests/:id` - Get request by ID
+- `PUT /api/requests/api/requests/:id` - Update request
+- `DELETE /api/requests/api/requests/:id` - Delete request
+
+### User Interests
+- `POST /api/interests/user/interests` - Save user interests
+- `GET /api/interests/user/:userId/interests` - Get user interests
+- `GET /api/interests/api/interests` - Get all available interests
+- `GET /api/interests/api/interests/:interest/users` - Get users by interest
+- `DELETE /api/interests/user/:userId/interests` - Delete user interests
+
+### User Profile
+- `GET /api/user-profile/user/:userId` - Get user profile with posts
+- `GET /api/user-profile/profile/places` - Get profile places
+
+### VIP Management
+- `POST /api/vip/api/make-vip` - Make place VIP (admin)
+- `GET /api/vip/api/vip-places` - Get VIP places
+- `GET /api/vip/api/places/:placeId/vip-status` - Check VIP status
+
+### Admin Actions
+- `GET /api/admin-actions/api/admin-actions/:placeId` - Get admin actions for place
+- `POST /api/admin-actions/api/admin-actions` - Log admin action
+- `GET /api/admin-actions/api/admin-actions` - Get all admin actions
+- `DELETE /api/admin-actions/api/admin-actions/:actionId` - Delete admin action
+
+### Ads Management
+- `POST /api/ads/ads/update/:id` - Update ads
+- `GET /api/ads/ads/owner/:ownerId` - Get ads by owner
+- `GET /api/ads/api/ads` - Get all ads
+
+### User Actions
+- `PUT /api/user-actions/users/action/:userId/block` - Block user (admin)
+- `PUT /api/user-actions/users/action/:userId/unblock` - Unblock user (admin)
+- `PUT /api/user-actions/places/:placeId/stop` - Stop place (admin)
+- `GET /api/user-actions/users/:userId/actions` - Get user action history
+
 ### Utility Routes
 - `GET /api/images/:folderName/:imageName` - Get image file
 - `GET /checkUser/:id/limitPosts` - Check user post limit
@@ -243,6 +284,12 @@ A clean, well-structured Node.js backend server for the JBuy application built w
 - `GET /places/filter/city` - Filter places by city
 - `GET /places/buyOrRent/count` - Get buy/rent counts
 - `GET /places/visits` - Get places visits statistics
+- `GET /admin/filter-places` - Admin filter places
+- `GET /admin/places/gat/:id` - Get place for admin
+- `POST /api/admin/add-user` - Admin add user
+- `DELETE /places/:id` - Delete place
+- `PUT /places/:id/approve` - Approve place
+- `DELETE /bookings/:id` - Delete booking
 
 ## 🔧 Configuration
 

@@ -28,6 +28,13 @@ const adminRoutes = require('./routes/admin');
 const settingsRoutes = require('./routes/settings');
 const slidesRoutes = require('./routes/slides');
 const subscriptionsRoutes = require('./routes/subscriptions');
+const requestsRoutes = require('./routes/requests');
+const interestsRoutes = require('./routes/interests');
+const userProfileRoutes = require('./routes/userProfile');
+const vipRoutes = require('./routes/vip');
+const adminActionsRoutes = require('./routes/adminActions');
+const adsRoutes = require('./routes/ads');
+const userActionsRoutes = require('./routes/userActions');
 
 // Create Express app
 const app = express();
@@ -76,6 +83,13 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/slides', slidesRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/requests', requestsRoutes);
+app.use('/api/interests', interestsRoutes);
+app.use('/api/user-profile', userProfileRoutes);
+app.use('/api/vip', vipRoutes);
+app.use('/api/admin-actions', adminActionsRoutes);
+app.use('/api/ads', adsRoutes);
+app.use('/api/user-actions', userActionsRoutes);
 
 // Additional routes that were in the original index.js
 app.get('/test/sms', async (req, res) => {
@@ -386,6 +400,284 @@ app.get('/places/visits', (req, res) => {
     res.json({
       success: true,
       visits: results
+    });
+  });
+});
+
+// Additional missing routes from original index.js
+
+// Admin filter places
+app.get('/admin/filter-places', (req, res) => {
+  const {
+    address = '',
+    category = '',
+    priceMin = '',
+    priceMax = '',
+    status = '',
+    page = 1,
+    limit = 20
+  } = req.query;
+
+  const offset = (page - 1) * limit;
+  let query = 'SELECT * FROM places WHERE 1=1';
+  const queryParams = [];
+
+  if (address) {
+    query += ' AND (city LIKE ? OR district LIKE ? OR address LIKE ?)';
+    const addressPattern = `%${address}%`;
+    queryParams.push(addressPattern, addressPattern, addressPattern);
+  }
+
+  if (category) {
+    query += ' AND category = ?';
+    queryParams.push(category);
+  }
+
+  if (priceMin) {
+    query += ' AND price >= ?';
+    queryParams.push(parseInt(priceMin));
+  }
+
+  if (priceMax) {
+    query += ' AND price <= ?';
+    queryParams.push(parseInt(priceMax));
+  }
+
+  if (status) {
+    if (status === 'active') {
+      query += ' AND is_active = 1';
+    } else if (status === 'inactive') {
+      query += ' AND is_active = 0';
+    } else if (status === 'approved') {
+      query += ' AND is_approved = 1';
+    } else if (status === 'pending') {
+      query += ' AND is_approved = 0';
+    }
+  }
+
+  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  queryParams.push(parseInt(limit), offset);
+
+  db.query(query, queryParams, (error, results) => {
+    if (error) {
+      console.error('Error filtering places:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    res.json({
+      success: true,
+      places: results,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: results.length
+      }
+    });
+  });
+});
+
+// Get place for admin
+app.get('/admin/places/gat/:id', (req, res) => {
+  const placeId = req.params.id;
+
+  const query = `
+    SELECT p.*, u.name as owner_name, u.phone as owner_phone, u.email as owner_email
+    FROM places p
+    LEFT JOIN users u ON p.owner_id = u.id
+    WHERE p.id = ?
+  `;
+
+  db.query(query, [placeId], (error, results) => {
+    if (error) {
+      console.error('Error fetching place for admin:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Place not found'
+      });
+    }
+
+    const place = results[0];
+    if (place.images) {
+      place.images = JSON.parse(place.images);
+    }
+
+    res.json({
+      success: true,
+      place
+    });
+  });
+});
+
+// Admin add user
+app.post('/api/admin/add-user', async (req, res) => {
+  const { name, phone, password } = req.body;
+
+  if (!name || !phone || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Name, phone, and password are required'
+    });
+  }
+
+  const crypto = require('crypto');
+  const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
+
+  const query = 'INSERT INTO users (name, phone, password, created_at) VALUES (?, ?, ?, NOW())';
+
+  db.query(query, [name, phone, hashedPassword], (error, result) => {
+    if (error) {
+      console.error('Error adding user:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'User added successfully',
+      userId: result.insertId
+    });
+  });
+});
+
+// Delete places
+app.delete('/places/:id', (req, res) => {
+  const placeId = req.params.id;
+
+  const query = 'DELETE FROM places WHERE id = ?';
+
+  db.query(query, [placeId], (error, result) => {
+    if (error) {
+      console.error('Error deleting place:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Place not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Place deleted successfully'
+    });
+  });
+});
+
+// Approve place
+app.put('/places/:id/approve', (req, res) => {
+  const placeId = req.params.id;
+  const { adminToken } = req.body;
+
+  if (!adminToken) {
+    return res.status(400).json({
+      success: false,
+      message: 'Admin token is required'
+    });
+  }
+
+  // Verify admin token
+  const adminQuery = 'SELECT id, name FROM admins WHERE token = ? AND is_active = 1';
+  
+  db.query(adminQuery, [adminToken], (error, adminResults) => {
+    if (error) {
+      console.error('Error verifying admin:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    if (adminResults.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid admin token'
+      });
+    }
+
+    const admin = adminResults[0];
+
+    // Update place to approved
+    const updateQuery = 'UPDATE places SET is_approved = 1, updated_at = NOW() WHERE id = ?';
+
+    db.query(updateQuery, [placeId], (error, result) => {
+      if (error) {
+        console.error('Error approving place:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Database error'
+        });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Place not found'
+        });
+      }
+
+      // Log admin action
+      const logQuery = `
+        INSERT INTO admin_actions_history 
+        (admin_id, admin_name, action_type, place_id, action_message, created_at)
+        VALUES (?, ?, 'approve', ?, 'Place approved', NOW())
+      `;
+
+      db.query(logQuery, [admin.id, admin.name, placeId], (logError) => {
+        if (logError) {
+          console.error('Error logging admin action:', logError);
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Place approved successfully'
+      });
+    });
+  });
+});
+
+// Delete bookings
+app.delete('/bookings/:id', (req, res) => {
+  const bookingId = req.params.id;
+
+  const query = 'DELETE FROM bookings WHERE id = ?';
+
+  db.query(query, [bookingId], (error, result) => {
+    if (error) {
+      console.error('Error deleting booking:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Database error'
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Booking deleted successfully'
     });
   });
 });
